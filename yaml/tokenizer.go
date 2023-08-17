@@ -87,38 +87,53 @@ func Tokenize(lines <-chan string, tokens chan<- Token) {
 
 			var ok bool
 			var remaining []rune = []rune(line)
-			remaining = parseIndent(remaining, tokens)
+
+			var numSpaces uint32
+			remaining, numSpaces = countLeadingSpaces(remaining)
+			if numSpaces > 0 {
+				tokens <- &indentToken{numSpaces}
+			}
 
 			for len(remaining) > 0 {
 
-				remaining, ok = tryParseSpace(remaining, tokens)
-				if ok {
+				var space string
+				remaining, space = getLeadingSpaces(remaining)
+				if len(space) > 0 {
+					tokens <- &spaceToken{space}
 					// it's strictly not necessary to continue here, but the code is more
 					// consistent this way
 					continue
 				}
 
-				remaining, ok = tryParseDash(remaining, tokens)
+				remaining, ok = tryParseSymbol([]rune{'-'}, remaining)
 				if ok {
+					tokens <- dashToken
 					continue
 				}
 
-				remaining, ok = tryParseColon(remaining, tokens)
+				remaining, ok = tryParseSymbol([]rune{':'}, remaining)
 				if ok {
+					tokens <- colonToken
 					continue
 				}
 
-				remaining, ok = tryParseDoubleQuote(remaining, tokens)
+				remaining, ok = tryParseSymbol([]rune{'"'}, remaining)
 				if ok {
+					tokens <- doubleQuoteToken
 					continue
 				}
 
-				remaining, ok = tryParseSingleQuote(remaining, tokens)
+				remaining, ok = tryParseSymbol([]rune{'\''}, remaining)
 				if ok {
+					tokens <- singleQuoteToken
 					continue
 				}
 
-				remaining = parseWord(remaining, tokens)
+				var word string
+				remaining, word = getNextWord(remaining)
+				if len(word) > 0 {
+					tokens <- &wordToken{word}
+				}
 			}
 
 			tokens <- newlineToken
@@ -128,7 +143,7 @@ func Tokenize(lines <-chan string, tokens chan<- Token) {
 
 }
 
-func parseIndent(runes []rune, tokens chan<- Token) []rune {
+func countLeadingSpaces(runes []rune) ([]rune, uint32) {
 	var numSpaces uint32 = 0
 	for _, char := range runes {
 		if char == ' ' {
@@ -138,14 +153,10 @@ func parseIndent(runes []rune, tokens chan<- Token) []rune {
 		}
 	}
 
-	if numSpaces > 0 {
-		tokens <- &indentToken{numSpaces}
-	}
-
-	return runes[numSpaces:]
+	return runes[numSpaces:], numSpaces
 }
 
-func tryParseSpace(runes []rune, tokens chan<- Token) ([]rune, bool) {
+func getLeadingSpaces(runes []rune) ([]rune, string) {
 	literalBuilder := strings.Builder{}
 	firstNonSpacePos := 0
 	for pos, c := range runes {
@@ -158,69 +169,36 @@ func tryParseSpace(runes []rune, tokens chan<- Token) ([]rune, bool) {
 	}
 
 	literal := literalBuilder.String()
-	if literal == "" {
-		return runes, false
-	}
-
-	tokens <- &spaceToken{literal}
-	return runes[firstNonSpacePos:], true
+	return runes[firstNonSpacePos:], literal
 }
 
-func tryParseDash(runes []rune, tokens chan<- Token) ([]rune, bool) {
-	if !(runes[0] == '-') {
-		return runes, false
-	}
-	if len(runes) == 1 || !isSpace(runes[1]) {
+func tryParseSymbol(symbol []rune, runes []rune) ([]rune, bool) {
+	symbolLength := len(symbol)
+	if len(runes) < symbolLength {
 		return runes, false
 	}
 
-	tokens <- dashToken
-	return runes[2:], true
+	for i, symbolRune := range symbol {
+		if symbolRune != runes[i] {
+			return runes, false
+		}
+	}
+
+	return runes[symbolLength:], true
 }
 
-func tryParseColon(runes []rune, tokens chan<- Token) ([]rune, bool) {
-	if !(runes[0] == ':') {
-		return runes, false
-	}
-	if len(runes) > 1 && !isSpace(runes[1]) {
-		return runes, false
-	}
-
-	tokens <- colonToken
-	if len(runes) == 1 {
-		return []rune{}, true
-	}
-	return runes[2:], true
-}
-
-func tryParseDoubleQuote(runes []rune, tokens chan<- Token) ([]rune, bool) {
-	if !(runes[0] == '"') {
-		return runes, false
-	}
-
-	tokens <- doubleQuoteToken
-	return runes[1:], true
-}
-
-func tryParseSingleQuote(runes []rune, tokens chan<- Token) ([]rune, bool) {
-	if !(runes[0] == '\'') {
-		return runes, false
-	}
-
-	tokens <- singleQuoteToken
-	return runes[1:], true
-}
-
-func parseWord(runes []rune, tokens chan<- Token) []rune {
+func getNextWord(runes []rune) ([]rune, string) {
 	literalBuilder := strings.Builder{}
-	for pos, c := range runes {
+	var pos int
+	var c rune
+	for pos, c = range runes {
 		if isSpace(c) || isSpecial(c) {
-			tokens <- &wordToken{literalBuilder.String()}
-			return runes[pos:]
+			break
 		}
 		literalBuilder.WriteRune(c)
 	}
-	return []rune{}
+	word := literalBuilder.String()
+	return runes[pos:], word
 }
 
 func isSpecial(c rune) bool {

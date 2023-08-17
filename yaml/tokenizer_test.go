@@ -13,33 +13,58 @@ type kindAndContent struct {
 func TestTokenizeNoLines(t *testing.T) {
 	lines := make(chan string)
 	tokens := make(chan yaml.Token)
+	done := make(chan bool)
+	defer func() { <-done }()
 
 	yaml.Tokenize(lines, tokens)
 
 	expected := []kindAndContent{}
-	failIfUnexpected(t, expected, tokens)
+	failIfUnexpected(t, expected, tokens, done)
 	close(lines)
 }
 
 func TestTokenizeEmptyLine(t *testing.T) {
 	lines := make(chan string)
 	tokens := make(chan yaml.Token)
+	done := make(chan bool)
+	defer func() { <-done }()
 
 	yaml.Tokenize(lines, tokens)
 
-	expected := []kindAndContent{}
-	failIfUnexpected(t, expected, tokens)
+	expected := []kindAndContent{
+		{yaml.NEWLINE, "\n"},
+	}
+	failIfUnexpected(t, expected, tokens, done)
 
 	lines <- ""
 	close(lines)
 }
 
-func failIfUnexpected(t *testing.T, expected []kindAndContent, tokens <-chan yaml.Token) {
+func TestTokenizeSingleToken(t *testing.T) {
+	lines := make(chan string)
+	tokens := make(chan yaml.Token)
+	done := make(chan bool)
+	defer func() { <-done }()
+
+	yaml.Tokenize(lines, tokens)
+
+	lines <- "-"
+	expected := []kindAndContent{
+		{yaml.DASH, "-"},
+		{yaml.NEWLINE, "\n"},
+	}
+	failIfUnexpected(t, expected, tokens, done)
+
+	close(lines)
+}
+
+func failIfUnexpected(t *testing.T, expected []kindAndContent, tokens <-chan yaml.Token, done chan<- bool) {
 	go func() {
 		i := 0
 		for token := range tokens {
 			if i >= len(expected) {
-				t.Errorf("Too many tokens: %v", token)
+				t.Errorf("Too many tokens: {%v, '%v'}", token.Kind(), token.String())
+				break
 			}
 
 			if expected[i].kind != token.Kind() {
@@ -50,88 +75,6 @@ func failIfUnexpected(t *testing.T, expected []kindAndContent, tokens <-chan yam
 			}
 			i++
 		}
+		done <- true
 	}()
 }
-
-// func TestTokenizeEmptyChunk(t *testing.T) {
-// 	chunks := make(chan string)
-// 	tokens := make(chan yaml.Token)
-
-// 	yaml.Tokenize(chunks, tokens)
-// 	go func() {
-// 		for token := range tokens {
-// 			t.Errorf("Unexpected token: %v", token)
-// 		}
-// 	}()
-
-// 	close(chunks)
-// }
-
-// func TestTokenizeEmptyString(t *testing.T) {
-// 	chunks := make(chan string)
-// 	tokens := make(chan yaml.Token)
-
-// 	yaml.Tokenize(chunks, tokens)
-// 	go func() {
-// 		for token := range tokens {
-// 			t.Errorf("Unexpected token: %v", token)
-// 		}
-// 	}()
-
-// 	chunks <- ""
-// 	close(chunks)
-// }
-
-// func TestTokenizeSingleToken(t *testing.T) {
-// 	chunks := make(chan string)
-// 	tokens := make(chan yaml.Token)
-// 	actualTokens := make([]yaml.Token, 0)
-
-// 	yaml.Tokenize(chunks, tokens)
-// 	go func() {
-// 		for token := range tokens {
-// 			actualTokens = append(actualTokens, token)
-// 		}
-// 	}()
-
-// 	chunks <- "-"
-// 	close(chunks)
-
-// 	expectedTokens := []yaml.Token{
-// 		{yaml.DASH, ""},
-// 	}
-// 	for i, expected := range expectedTokens {
-// 		actual := actualTokens[i]
-// 		if actual != expected {
-// 			t.Errorf("Expected token %v but got %v", expected, actual)
-// 		}
-// 	}
-// }
-
-// func TestMultipleTokens(t *testing.T) {
-// 	chunks := make(chan string)
-// 	tokens := make(chan yaml.Token)
-// 	actualTokens := make([]yaml.Token, 0)
-
-// 	yaml.Tokenize(chunks, tokens)
-// 	go func() {
-// 		for token := range tokens {
-// 			actualTokens = append(actualTokens, token)
-// 		}
-// 	}()
-
-// 	chunks <- "key: value"
-// 	close(chunks)
-
-// 	expectedTokens := []yaml.Token{
-// 		{yaml.WORD, "key"},
-// 		{yaml.COLON, ""},
-// 		{yaml.WORD, "value"},
-// 	}
-// 	for i, expected := range expectedTokens {
-// 		actual := actualTokens[i]
-// 		if actual != expected {
-// 			t.Errorf("Expected token %v but got %v", expected, actual)
-// 		}
-// 	}
-// }
