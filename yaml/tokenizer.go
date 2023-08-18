@@ -61,7 +61,7 @@ func (t *symbolicToken) String() string {
 func (t *indentToken) String() string {
 	sb := strings.Builder{}
 	var i uint32
-	for i = 0; i <= t.spaceCount; i++ {
+	for i = 0; i < t.spaceCount; i++ {
 		sb.WriteByte(' ')
 	}
 	return sb.String()
@@ -98,6 +98,7 @@ func Tokenize(lines <-chan string, tokens chan<- Token) {
 
 				var space string
 				remaining, space = getLeadingSpaces(remaining)
+
 				if len(space) > 0 {
 					tokens <- &spaceToken{space}
 					// it's strictly not necessary to continue here, but the code is more
@@ -158,18 +159,15 @@ func countLeadingSpaces(runes []rune) ([]rune, uint32) {
 
 func getLeadingSpaces(runes []rune) ([]rune, string) {
 	literalBuilder := strings.Builder{}
-	firstNonSpacePos := 0
-	for pos, c := range runes {
+	for _, c := range runes {
 		if !isSpace(c) {
-			firstNonSpacePos = pos
 			break
 		}
-
 		literalBuilder.WriteRune(c)
 	}
 
 	literal := literalBuilder.String()
-	return runes[firstNonSpacePos:], literal
+	return runes[len(literal):], literal
 }
 
 func tryParseSymbol(symbol []rune, runes []rune) ([]rune, bool) {
@@ -189,16 +187,15 @@ func tryParseSymbol(symbol []rune, runes []rune) ([]rune, bool) {
 
 func getNextWord(runes []rune) ([]rune, string) {
 	literalBuilder := strings.Builder{}
-	var pos int
 	var c rune
-	for pos, c = range runes {
+	for _, c = range runes {
 		if isSpace(c) || isSpecial(c) {
 			break
 		}
 		literalBuilder.WriteRune(c)
 	}
 	word := literalBuilder.String()
-	return runes[pos:], word
+	return runes[len(word):], word
 }
 
 func isSpecial(c rune) bool {
