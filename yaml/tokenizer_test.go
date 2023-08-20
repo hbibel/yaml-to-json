@@ -1,22 +1,21 @@
-package yaml_test
+package yaml
 
 import (
-	"hbibel/yaml-to-json/yaml"
 	"testing"
 )
 
 type kindAndContent struct {
-	kind    yaml.TokenKind
+	kind    TokenKind
 	content string
 }
 
 func TestTokenizeNoLines(t *testing.T) {
 	lines := make(chan string)
-	tokens := make(chan yaml.Token)
+	tokens := make(chan Token)
 	done := make(chan bool)
 	defer func() { <-done }()
 
-	yaml.Tokenize(lines, tokens)
+	Tokenize(lines, tokens)
 
 	expected := []kindAndContent{}
 	failIfUnexpected(t, expected, tokens, done)
@@ -25,14 +24,14 @@ func TestTokenizeNoLines(t *testing.T) {
 
 func TestTokenizeEmptyLine(t *testing.T) {
 	lines := make(chan string)
-	tokens := make(chan yaml.Token)
+	tokens := make(chan Token)
 	done := make(chan bool)
 	defer func() { <-done }()
 
-	yaml.Tokenize(lines, tokens)
+	Tokenize(lines, tokens)
 
 	expected := []kindAndContent{
-		{yaml.NEWLINE, "\n"},
+		{NEWLINE, "\n"},
 	}
 	failIfUnexpected(t, expected, tokens, done)
 
@@ -42,16 +41,16 @@ func TestTokenizeEmptyLine(t *testing.T) {
 
 func TestTokenizeSingleToken(t *testing.T) {
 	lines := make(chan string)
-	tokens := make(chan yaml.Token)
+	tokens := make(chan Token)
 	done := make(chan bool)
 	defer func() { <-done }()
 
-	yaml.Tokenize(lines, tokens)
+	Tokenize(lines, tokens)
 
 	lines <- "-"
 	expected := []kindAndContent{
-		{yaml.DASH, "-"},
-		{yaml.NEWLINE, "\n"},
+		{DASH, "-"},
+		{NEWLINE, "\n"},
 	}
 	failIfUnexpected(t, expected, tokens, done)
 
@@ -60,17 +59,17 @@ func TestTokenizeSingleToken(t *testing.T) {
 
 func TestTokenizeConsecutiveTokens(t *testing.T) {
 	lines := make(chan string)
-	tokens := make(chan yaml.Token)
+	tokens := make(chan Token)
 	done := make(chan bool)
 	defer func() { <-done }()
 
-	yaml.Tokenize(lines, tokens)
+	Tokenize(lines, tokens)
 
 	lines <- "-:"
 	expected := []kindAndContent{
-		{yaml.DASH, "-"},
-		{yaml.COLON, ":"},
-		{yaml.NEWLINE, "\n"},
+		{DASH, "-"},
+		{COLON, ":"},
+		{NEWLINE, "\n"},
 	}
 	failIfUnexpected(t, expected, tokens, done)
 
@@ -79,17 +78,17 @@ func TestTokenizeConsecutiveTokens(t *testing.T) {
 
 func TestTokenizeLeadingSpaces(t *testing.T) {
 	lines := make(chan string)
-	tokens := make(chan yaml.Token)
+	tokens := make(chan Token)
 	done := make(chan bool)
 	defer func() { <-done }()
 
-	yaml.Tokenize(lines, tokens)
+	Tokenize(lines, tokens)
 
 	lines <- "  -"
 	expected := []kindAndContent{
-		{yaml.INDENT, "  "},
-		{yaml.DASH, "-"},
-		{yaml.NEWLINE, "\n"},
+		{INDENT, "  "},
+		{DASH, "-"},
+		{NEWLINE, "\n"},
 	}
 	failIfUnexpected(t, expected, tokens, done)
 
@@ -98,16 +97,16 @@ func TestTokenizeLeadingSpaces(t *testing.T) {
 
 func TestTokenizeAlphaWord(t *testing.T) {
 	lines := make(chan string)
-	tokens := make(chan yaml.Token)
+	tokens := make(chan Token)
 	done := make(chan bool)
 	defer func() { <-done }()
 
-	yaml.Tokenize(lines, tokens)
+	Tokenize(lines, tokens)
 
 	lines <- "key"
 	expected := []kindAndContent{
-		{yaml.WORD, "key"},
-		{yaml.NEWLINE, "\n"},
+		{WORD, "key"},
+		{NEWLINE, "\n"},
 	}
 	failIfUnexpected(t, expected, tokens, done)
 
@@ -116,23 +115,23 @@ func TestTokenizeAlphaWord(t *testing.T) {
 
 func TestTokenizeMultipleLines(t *testing.T) {
 	lines := make(chan string)
-	tokens := make(chan yaml.Token)
+	tokens := make(chan Token)
 	done := make(chan bool)
 	defer func() { <-done }()
 
-	yaml.Tokenize(lines, tokens)
+	Tokenize(lines, tokens)
 
 	input := []string{
 		"  -",
 		"  -",
 	}
 	expected := []kindAndContent{
-		{yaml.INDENT, "  "},
-		{yaml.DASH, "-"},
-		{yaml.NEWLINE, "\n"},
-		{yaml.INDENT, "  "},
-		{yaml.DASH, "-"},
-		{yaml.NEWLINE, "\n"},
+		{INDENT, "  "},
+		{DASH, "-"},
+		{NEWLINE, "\n"},
+		{INDENT, "  "},
+		{DASH, "-"},
+		{NEWLINE, "\n"},
 	}
 	failIfUnexpected(t, expected, tokens, done)
 
@@ -145,19 +144,19 @@ func TestTokenizeMultipleLines(t *testing.T) {
 
 func TestRepeatSymbolicToken(t *testing.T) {
 	lines := make(chan string)
-	tokens := make(chan yaml.Token)
+	tokens := make(chan Token)
 	done := make(chan bool)
 	defer func() { <-done }()
 
-	yaml.Tokenize(lines, tokens)
+	Tokenize(lines, tokens)
 
 	input := []string{
 		"--",
 	}
 	expected := []kindAndContent{
-		{yaml.DASH, "-"},
-		{yaml.DASH, "-"},
-		{yaml.NEWLINE, "\n"},
+		{DASH, "-"},
+		{DASH, "-"},
+		{NEWLINE, "\n"},
 	}
 	failIfUnexpected(t, expected, tokens, done)
 
@@ -170,11 +169,11 @@ func TestRepeatSymbolicToken(t *testing.T) {
 
 func TestSmallYamlFile(t *testing.T) {
 	lines := make(chan string)
-	tokens := make(chan yaml.Token)
+	tokens := make(chan Token)
 	done := make(chan bool)
 	defer func() { <-done }()
 
-	yaml.Tokenize(lines, tokens)
+	Tokenize(lines, tokens)
 
 	input := []string{
 		"key: value",
@@ -184,34 +183,34 @@ func TestSmallYamlFile(t *testing.T) {
 		"  - \"z\"",
 	}
 	expected := []kindAndContent{
-		{yaml.WORD, "key"},
-		{yaml.COLON, ":"},
-		{yaml.SPACE, " "},
-		{yaml.WORD, "value"},
-		{yaml.NEWLINE, "\n"},
-		{yaml.WORD, "key2"},
-		{yaml.COLON, ":"},
-		{yaml.SPACE, " "},
-		{yaml.NEWLINE, "\n"},
-		{yaml.INDENT, "  "},
-		{yaml.DASH, "-"},
-		{yaml.SPACE, " "},
-		{yaml.SINGLE_QUOTE, "'"},
-		{yaml.WORD, "x"},
-		{yaml.SINGLE_QUOTE, "'"},
-		{yaml.NEWLINE, "\n"},
-		{yaml.INDENT, "  "},
-		{yaml.DASH, "-"},
-		{yaml.SPACE, " "},
-		{yaml.WORD, "y"},
-		{yaml.NEWLINE, "\n"},
-		{yaml.INDENT, "  "},
-		{yaml.DASH, "-"},
-		{yaml.SPACE, " "},
-		{yaml.DOUBLE_QUOTE, "\""},
-		{yaml.WORD, "z"},
-		{yaml.DOUBLE_QUOTE, "\""},
-		{yaml.NEWLINE, "\n"},
+		{WORD, "key"},
+		{COLON, ":"},
+		{SPACE, " "},
+		{WORD, "value"},
+		{NEWLINE, "\n"},
+		{WORD, "key2"},
+		{COLON, ":"},
+		{SPACE, " "},
+		{NEWLINE, "\n"},
+		{INDENT, "  "},
+		{DASH, "-"},
+		{SPACE, " "},
+		{SINGLE_QUOTE, "'"},
+		{WORD, "x"},
+		{SINGLE_QUOTE, "'"},
+		{NEWLINE, "\n"},
+		{INDENT, "  "},
+		{DASH, "-"},
+		{SPACE, " "},
+		{WORD, "y"},
+		{NEWLINE, "\n"},
+		{INDENT, "  "},
+		{DASH, "-"},
+		{SPACE, " "},
+		{DOUBLE_QUOTE, "\""},
+		{WORD, "z"},
+		{DOUBLE_QUOTE, "\""},
+		{NEWLINE, "\n"},
 	}
 	failIfUnexpected(t, expected, tokens, done)
 
@@ -222,7 +221,7 @@ func TestSmallYamlFile(t *testing.T) {
 	close(lines)
 }
 
-func failIfUnexpected(t *testing.T, expected []kindAndContent, tokens <-chan yaml.Token, done chan<- bool) {
+func failIfUnexpected(t *testing.T, expected []kindAndContent, tokens <-chan Token, done chan<- bool) {
 	go func() {
 		actual := []kindAndContent{}
 		for token := range tokens {

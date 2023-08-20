@@ -1,8 +1,7 @@
-package json_test
+package json
 
 import (
 	"hbibel/yaml-to-json/common"
-	"hbibel/yaml-to-json/json"
 	"testing"
 )
 
@@ -144,7 +143,7 @@ func runTest(t *testing.T, events []common.Event, expectedChunks []string) {
 	eventsChannel := make(chan common.Event)
 	done := make(chan bool)
 
-	chunkChannel := json.RenderEvents(eventsChannel)
+	chunkChannel := RenderEvents(eventsChannel)
 	var chunks []string
 	go func() {
 		for chunk := range chunkChannel {
