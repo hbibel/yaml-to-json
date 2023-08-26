@@ -2,6 +2,7 @@ package json
 
 import (
 	"hbibel/yaml-to-json/common"
+	"reflect"
 	"testing"
 )
 
@@ -144,7 +145,7 @@ func runTest(t *testing.T, events []common.Event, expectedChunks []string) {
 	done := make(chan bool)
 
 	chunkChannel := RenderEvents(eventsChannel)
-	var chunks []string
+	var chunks = make([]string, 0)
 	go func() {
 		for chunk := range chunkChannel {
 			chunks = append(chunks, chunk)
@@ -158,19 +159,7 @@ func runTest(t *testing.T, events []common.Event, expectedChunks []string) {
 	close(eventsChannel)
 
 	<-done
-	if !containSameElementsInOrder(chunks, expectedChunks) {
+	if !reflect.DeepEqual(chunks, expectedChunks) {
 		t.Error("Expected", expectedChunks, "got", chunks)
 	}
-}
-
-func containSameElementsInOrder(a, b []string) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i, element := range a {
-		if element != b[i] {
-			return false
-		}
-	}
-	return true
 }
